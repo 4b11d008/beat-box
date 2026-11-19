@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BEAT BOX｜電子鼓遊樂場</title>
+<style>
+:root{--ink:#211d1a;--cream:#f4ead8;--orange:#d96b35;--muted:#b9a991}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--cream);color:var(--ink);font-family:Arial,"Noto Sans TC",sans-serif;display:grid;place-items:center;padding:24px}
+.wrap{width:min(760px,100%);background:#211d1a;color:var(--cream);border:8px solid #d8c7aa;border-radius:24px;padding:clamp(20px,5vw,42px);box-shadow:0 16px 0 #c6b394}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #65594d;padding-bottom:18px}
+.kicker{font-size:11px;letter-spacing:4px;color:#e99a65}
+h1{font-size:clamp(30px,7vw,52px);letter-spacing:2px;margin:6px 0}
+.subtitle{color:#c6b9a6;font-size:14px}
+.lamp{width:12px;height:12px;border-radius:50%;background:var(--orange);box-shadow:0 0 16px var(--orange)}
+.instructions{text-align:center;margin:26px 0 20px;color:#d7cbb9;font-size:14px}
+.pads{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.pad{border:0;border-radius:18px;min-height:180px;padding:20px 10px;cursor:pointer;color:#211d1a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;box-shadow:inset 0 -7px 0 #0002,0 5px 0 #100e0c;transition:transform .08s,filter .08s;user-select:none}
+.pad:active,.pad.hit{transform:translateY(5px);box-shadow:inset 0 -2px 0 #0002,0 0 0 #100e0c;filter:brightness(1.12)}
+.pad.kick{background:#e6b27f}.pad.snare{background:#e28a57}.pad.hat{background:#e8d9b8}
+.symbol{width:76px;height:76px;border:4px solid currentColor;border-radius:50%;display:grid;place-items:center;font-size:28px;font-weight:bold}
+.pad strong{font-size:19px;letter-spacing:2px}.pad small{font-size:12px;opacity:.75}
+.footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:26px;color:#b9a991;font-size:12px}
+.stop{background:transparent;border:1px solid #8b7965;color:#f4ead8;padding:10px 16px;border-radius:999px;cursor:pointer}
+.stop:hover{background:#39312a}
+.note{text-align:center;margin-top:18px;color:#8f806e;font-size:11px}
+@media(max-width:560px){.pads{grid-template-columns:1fr;gap:12px}.pad{min-height:125px;flex-direction:row;justify-content:flex-start;padding:18px 24px}.symbol{width:62px;height:62px;flex-shrink:0}.pad small{margin-left:auto}.footer{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="top"><div><div class="kicker">INTERACTIVE AUDIO PLAYGROUND</div><h1>BEAT BOX</h1><div class="subtitle">用滑鼠，玩出自己的節奏。</div></div><div class="lamp" aria-hidden="true"></div></div>
+  <p class="instructions">點擊下方鼓面，聽聽不同聲音！試著自由組合你的節奏。</p>
+  <section class="pads" aria-label="電子鼓按鈕">
+    <button class="pad kick" data-sound="kick"><span class="symbol">●</span><strong>大鼓 KICK</strong><small>低沉・咚</small></button>
+    <button class="pad snare" data-sound="snare"><span class="symbol">✳</span><strong>小鼓 SNARE</strong><small>清脆・啪</small></button>
+    <button class="pad hat" data-sound="hat"><span class="symbol">〰</span><strong>鈸 HI-HAT</strong><small>短促・擦</small></button>
+  </section>
+  <div class="footer"><span id="status">音訊待命｜點擊任一鼓面開始</span><button class="stop" id="stop">停止聲音</button></div>
+  <div class="note">SOUND IS EVERYWHERE · MAKE YOUR OWN BEAT</div>
+</main>
+<script>
+let ctx=null, active=[];
+function audio(){if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==="suspended")ctx.resume();return ctx}
+function track(n){active=active.filter(x=>x>audio().currentTime)}
+function play(type){
+ const c=audio(), now=c.currentTime;
+ if(type==="kick"){
+  const o=c.createOscillator(),g=c.createGain();
+  o.type="sine";o.frequency.setValueAtTime(145,now);o.frequency.exponentialRampToValueAtTime(42,now+.22);
+  g.gain.setValueAtTime(.9,now);g.gain.exponentialRampToValueAtTime(.001,now+.32);
+  o.connect(g);g.connect(c.destination);o.start(now);o.stop(now+.34);
+ }else if(type==="snare"){
+  const length=Math.floor(c.sampleRate*.18),buf=c.createBuffer(1,length,c.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<length;i++)d[i]=(Math.random()*2-1)*(1-i/length);
+  const src=c.createBufferSource(),filter=c.createBiquadFilter(),g=c.createGain();
+  src.buffer=buf;filter.type="highpass";filter.frequency.value=900;g.gain.setValueAtTime(.55,now);g.gain.exponentialRampToValueAtTime(.001,now+.18);
+  src.connect(filter);filter.connect(g);g.connect(c.destination);src.start(now);
+ }else{
+  const length=Math.floor(c.sampleRate*.09),buf=c.createBuffer(1,length,c.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<length;i++)d[i]=Math.random()*2-1;
+  const src=c.createBufferSource(),filter=c.createBiquadFilter(),g=c.createGain();
+  src.buffer=buf;filter.type="highpass";filter.frequency.value=6500;g.gain.setValueAtTime(.28,now);g.gain.exponentialRampToValueAtTime(.001,now+.075);
+  src.connect(filter);filter.connect(g);g.connect(c.destination);src.start(now);
+ }
+ document.getElementById("status").textContent=({kick:"大鼓：咚！",snare:"小鼓：啪！",hat:"鈸：擦！"})[type];
+}
+document.querySelectorAll(".pad").forEach(btn=>btn.addEventListener("click",()=>{
+ play(btn.dataset.sound);btn.classList.add("hit");setTimeout(()=>btn.classList.remove("hit"),110);
+}));
+document.getElementById("stop").addEventListener("click",()=>{
+ if(ctx){ctx.close();ctx=null;}document.getElementById("status").textContent="已停止｜點擊任一鼓面重新開始";
+});
+</script>
+</body>
+</html>
